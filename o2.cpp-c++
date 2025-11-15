@@ -1,0 +1,112 @@
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <string>
+
+using namespace cv;
+using namespace std;
+
+class BackgroundChanger {
+private:
+    // 白色阈值范围 (BGR格式)
+    int whiteThreshold = 200;
+
+public:
+    // 设置白色阈值
+    void setWhiteThreshold(int threshold) {
+        whiteThreshold = threshold;
+    }
+
+    // 方法1: 基于颜色阈值替换背景
+    Mat changeBackgroundToBlack(const Mat& input) {
+        Mat result = input.clone();
+        
+        // 遍历每个像素
+        for (int i = 0; i < result.rows; i++) {
+            for (int j = 0; j < result.cols; j++) {
+                Vec3b pixel = result.at<Vec3b>(i, j);
+                
+                // 检查是否是白色背景 (BGR值都大于阈值)
+                if (pixel[0] > whiteThreshold && pixel[1] > whiteThreshold && pixel[2] > whiteThreshold) {
+                    // 将白色像素改为黑色
+                    result.at<Vec3b>(i, j) = Vec3b(0, 0, 0);
+                }
+            }
+        }
+        
+        return result;
+    }
+};
+int main(int argc, char** argv) {
+    // 检查命令行参数
+    if (argc < 3) {
+        cout << "使用方法: " << argv[0] << " <输入图片路径> <输出图片路径> [阈值]" << endl;
+        cout << "示例: " << argv[0] << " input.jpg output.jpg 200" << endl;
+        cout << "阈值范围: 180-230 (默认200)" << endl;
+        return -1;
+    }
+
+    string inputPath = argv[1];
+    string outputPath = argv[2];
+    
+    int threshold = 200; // 默认阈值
+    if (argc >= 4) {
+        threshold = stoi(argv[3]);
+    }
+
+    // 读取图片
+    Mat originalImage = imread(inputPath);
+    
+    if (originalImage.empty()) {
+        cout << "错误: 无法读取图片 " << inputPath << endl;
+        return -1;
+    }
+
+    cout << "✅ 图片读取成功: " << inputPath << endl;
+    cout << "📐 图片尺寸: " << originalImage.cols << " x " << originalImage.rows << endl;
+    cout << "⚙️  使用白色阈值: " << threshold << endl;
+
+    BackgroundChanger converter;
+    converter.setWhiteThreshold(threshold);
+
+    // 选择转换方法
+    int method;
+    cout << "\n请选择转换方法:" << endl;
+    cout << "1. 基础阈值替换" << endl;
+    cin >> method;
+
+    Mat result;
+    string methodName;
+
+    switch (method) {
+        case 1:
+            result = converter.changeBackgroundToBlack(originalImage);
+            methodName = "基础阈值替换";
+            break;
+    }
+
+    cout << "🔄 " << methodName << "完成" << endl;
+
+    // 保存结果
+    bool isSuccess = imwrite(outputPath, result);
+    
+    if (isSuccess) {
+        cout << "💾 背景替换后的图片已保存: " << outputPath << endl;
+        
+        // 统计替换的像素数量
+        Mat whiteMask;
+        inRange(originalImage, Scalar(threshold, threshold, threshold), 
+                Scalar(255, 255, 255), whiteMask);
+        int whitePixels = countNonZero(whiteMask);
+        
+        cout << "📊 统计信息:" << endl;
+        cout << "   替换的白色像素: " << whitePixels << " 个" << endl;
+        cout << "   图片总像素: " << originalImage.total() << " 个" << endl;
+        cout << "   替换比例: " << (whitePixels * 100.0 / originalImage.total()) << "%" << endl;
+    } else {
+        cout << "❌ 保存图片失败: " << outputPath << endl;
+        return -1;
+    }
+
+    return 0;
+}
+
