@@ -1,0 +1,75 @@
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgproc.hpp>
+#include <vector>
+
+using namespace cv;
+using namespace std;
+
+int main() {
+    // 1. 读取图片
+    Mat image = imread("/home/huxinlei/图片/opencv.jpg");  
+    if (image.empty()) {
+        cout << "无法读取图片" << endl;
+        return -1;
+    }
+
+    // 2. 转换为灰度图
+    Mat gray;
+    cvtColor(image, gray, COLOR_BGR2GRAY);
+    
+    // 保存灰度图
+    imwrite("1_gray.jpg", gray);
+
+    // 3. 二值化处理
+    Mat binary;
+    // 使用OTSU自适应阈值
+    threshold(gray, binary, 0, 255, THRESH_BINARY_INV + THRESH_OTSU);
+    
+    // 保存二值化图
+    imwrite("2_binary.jpg", binary);
+
+    // 4. 膨胀处理（连接断裂的文字笔画）
+    Mat dilated;
+    // 创建矩形结构元素
+    Mat kernel = getStructuringElement(MORPH_RECT, Size(3, 3));
+    // 执行膨胀操作
+    dilate(binary, dilated, kernel, Point(-1, -1), 2);
+    
+    // 保存膨胀后的图
+    imwrite("3_dilated.jpg", dilated);
+
+    // 5. 查找轮廓
+    vector<vector<Point>> contours;
+    vector<Vec4i> hierarchy;
+    findContours(dilated, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    // 6. 在原图上用红线描出轮廓
+    Mat result = image.clone();
+    for (size_t i = 0; i < contours.size(); i++) {
+        // 过滤掉太小的轮廓（可能是噪声）
+        if (contourArea(contours[i]) > 50) {
+            drawContours(result, contours, i, Scalar(0, 0, 255), 2); // 红色，线宽2
+        }
+    }
+
+    // 7. 保存结果
+    imwrite("4_result.jpg", result);
+
+    // 8. 显示结果（可选）
+    namedWindow("Original", WINDOW_NORMAL);
+    namedWindow("Process Result", WINDOW_NORMAL);
+    
+    imshow("Original", image);
+    imshow("Process Result", result);
+
+    waitKey(0);
+    destroyAllWindows();
+
+    cout << "处理完成！生成了以下文件：" << endl;
+    cout << "1_gray.jpg - 灰度图" << endl;
+    cout << "2_binary.jpg - 二值化图" << endl;
+    cout << "3_dilated.jpg - 膨胀后的图" << endl;
+    cout << "4_result.jpg - 最终结果" << endl;
+
+    return 0;
+}
