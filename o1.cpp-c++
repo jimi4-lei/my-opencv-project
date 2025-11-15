@@ -1,0 +1,60 @@
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <string>
+
+using namespace cv;
+using namespace std;
+
+int main(int argc, char** argv) {
+    // 检查命令行参数
+    if (argc != 3) {
+        cout << "使用方法: " << argv[0] << " <输入图片路径> <输出图片路径>" << endl;
+        cout << "示例: " << argv[0] << " input.jpg grayscale_output.jpg" << endl;
+        return -1;
+    }
+
+    string inputPath = argv[1];
+    string outputPath = argv[2];
+
+    // 读取图片
+    Mat colorImage = imread(inputPath);
+    
+    // 检查图片是否成功读取
+    if (colorImage.empty()) {
+        cout << "错误: 无法读取图片 " << inputPath << endl;
+        cout << "请检查:" << endl;
+        cout << "1. 文件路径是否正确" << endl;
+        cout << "2. 文件是否存在" << endl;
+        cout << "3. 文件格式是否支持" << endl;
+        return -1;
+    }
+
+    cout << "✅ 图片读取成功: " << inputPath << endl;
+    cout << "📐 原始图片尺寸: " << colorImage.cols << " x " << colorImage.rows << endl;
+    cout << "🎨 颜色通道: " << colorImage.channels() << endl;
+
+    // 转换为灰度图
+    Mat grayscaleImage;
+    cvtColor(colorImage, grayscaleImage, COLOR_BGR2GRAY);
+
+    cout << "🔄 灰度转换完成" << endl;
+    cout << "⚫ 灰度图通道: " << grayscaleImage.channels() << endl;
+
+    // 保存灰度图
+    bool isSuccess = imwrite(outputPath, grayscaleImage);
+    
+    if (isSuccess) {
+        cout << "💾 灰度图已保存: " << outputPath << endl;
+        
+        // 显示图片信息
+        cout << "\n📊 图片信息:" << endl;
+        cout << "   最小像素值: " << *min_element(grayscaleImage.begin<uchar>(), grayscaleImage.end<uchar>()) << endl;
+        cout << "   最大像素值: " << *max_element(grayscaleImage.begin<uchar>(), grayscaleImage.end<uchar>()) << endl;
+        cout << "   数据类型: " << grayscaleImage.type() << " (CV_8UC1)" << endl;
+    } else {
+        cout << "❌ 保存图片失败: " << outputPath << endl;
+        return -1;
+    }
+
+    return 0;
+}
