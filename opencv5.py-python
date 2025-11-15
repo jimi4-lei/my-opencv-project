@@ -1,0 +1,57 @@
+import cv2
+import numpy as np
+import os
+
+def rotate_image_45_left(input_path, output_path=None):
+    """
+    将图片向左旋转45度
+    """
+    # 读取图片
+    img = cv2.imread(input_path)
+    if img is None:
+        print(f"❌ 错误：无法读取图片 {input_path}")
+        return None
+    
+    print(f"✅ 原始图片尺寸: {img.shape[1]}x{img.shape[0]}")
+    
+    # 获取图片尺寸
+    height, width = img.shape[:2]
+    
+    # 计算旋转中心
+    center = (width // 2, height // 2)
+    
+    # 创建旋转矩阵（向左旋转45度 = 逆时针45度）
+    rotation_matrix = cv2.getRotationMatrix2D(center, 45, 1.0)
+    
+    # 计算旋转后的图片尺寸
+    cos_val = np.abs(rotation_matrix[0, 0])
+    sin_val = np.abs(rotation_matrix[0, 1])
+    
+    new_width = int((height * sin_val) + (width * cos_val))
+    new_height = int((height * cos_val) + (width * sin_val))
+    
+    # 调整旋转矩阵的平移部分
+    rotation_matrix[0, 2] += (new_width / 2) - center[0]
+    rotation_matrix[1, 2] += (new_height / 2) - center[1]
+    
+    # 应用旋转
+    rotated_img = cv2.warpAffine(img, rotation_matrix, (new_width, new_height), 
+                                flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, 
+                                borderValue=(255, 255, 255))  # 白色背景
+    
+    print(f"📐 旋转后图片尺寸: {new_width}x{new_height}")
+    
+    # 保存结果
+    if output_path is None:
+        name, ext = os.path.splitext(input_path)
+        output_path = f"{name}_rotated_45_left{ext}"
+    
+    cv2.imwrite(output_path, rotated_img)
+    print(f"💾 旋转后的图片已保存: {output_path}")
+    
+    return rotated_img
+
+# 使用方法
+if __name__ == "__main__":
+    input_image =  "/home/huxinlei/图片/opencv.jpg" # 替换为您的图片路径
+    rotated_image = rotate_image_45_left(input_image)
