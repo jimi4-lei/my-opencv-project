@@ -1,0 +1,138 @@
+#include <opencv2/opencv.hpp>
+#include <iostream>
+#include <string>
+#include <vector>
+
+using namespace cv;
+using namespace std;
+
+class RGBChannelSeparator {
+public:
+    // 分离单个RGB通道
+    Mat extractSingleChannel(const Mat& input, int channelIndex, const string& channelName) {
+        // 检查通道索引是否有效
+        if (channelIndex < 0 || channelIndex > 2) {
+            cerr << "错误: 通道索引必须在0-2之间 (0=Blue, 1=Green, 2=Red)" << endl;
+            return Mat();
+        }
+        
+        // 分离通道
+        vector<Mat> channels;
+        split(input, channels);
+        
+        // 创建单通道图像（黑色背景）
+        Mat singleChannel = Mat::zeros(input.size(), CV_8UC3);
+        
+        // 将指定通道复制到对应的颜色平面
+        vector<Mat> outputChannels(3, Mat::zeros(input.size(), CV_8UC1));
+        outputChannels[channelIndex] = channels[channelIndex];
+        
+        // 合并通道
+        merge(outputChannels, singleChannel);
+        
+        cout << "✅ " << channelName << "通道提取完成" << endl;
+        return singleChannel;
+    }
+    
+    // 提取所有RGB通道
+    void extractAllChannels(const Mat& input, const string& baseOutputPath) {
+        vector<Mat> channels;
+        split(input, channels);
+        
+        // 通道名称
+        vector<string> channelNames = {"Blue", "Green", "Red"};
+        vector<Scalar> colors = {Scalar(255, 0, 0), Scalar(0, 255, 0), Scalar(0, 0, 255)};
+        
+        for (int i = 0; i < 3; i++) {
+            // 创建单通道显示图像
+            Mat singleChannel = Mat::zeros(input.size(), CV_8UC3);
+            vector<Mat> outputChannels(3, Mat::zeros(input.size(), CV_8UC1));
+            outputChannels[i] = channels[i];
+            merge(outputChannels, singleChannel);
+            
+            // 保存单通道图像
+            string outputPath = baseOutputPath + "_" + channelNames[i] + ".jpg";
+            imwrite(outputPath, singleChannel);
+            
+            cout << "💾 " << channelNames[i] << "通道已保存: " << outputPath << endl;
+            
+            // 同时保存灰度版本
+            string grayPath = baseOutputPath + "_" + channelNames[i] + "_gray.jpg";
+            imwrite(grayPath, channels[i]);
+            cout << "💾 " << channelNames[i] << "通道灰度图已保存: " << grayPath << endl;
+        }
+    }
+    
+    // 创建通道对比图
+    Mat createChannelComparison(const Mat& input) {
+        vector<Mat> channels;
+        split(input, channels);
+        
+        // 创建对比图像
+        Mat comparison;
+        hconcat(channels[2], channels[1], comparison); // Red + Green
+        Mat temp;
+        hconcat(comparison, channels[0], temp); // + Blue
+        
+        // 添加原始图像
+        hconcat(temp, input, comparison);
+        
+        return comparison;
+    }
+};
+
+int main(int argc, char** argv) {
+    // 检查命令行参数
+    if (argc < 3) {
+        cout << "使用方法: " << argv[0] << " <输入图片路径> <输出路径前缀> [通道]" << endl;
+        cout << "示例: " << argv[0] << " input.jpg output" << endl;
+        cout << "示例: " << argv[0] << " input.jpg output 0 (只提取蓝色通道)" << endl;
+        cout << "通道: 0=Blue, 1=Green, 2=Red, 不指定则提取所有通道" << endl;
+        return -1;
+    }
+
+    string inputPath = argv[1];
+    string outputPrefix = argv[2];
+    
+    int specificChannel = -1; // -1表示提取所有通道
+    if (argc >= 4) {
+        specificChannel = stoi(argv[3]);
+    }
+
+    // 读取图片
+    Mat originalImage = imread(inputPath);
+    
+    if (originalImage.empty()) {
+        cout << "错误: 无法读取图片 " << inputPath << endl;
+        return -1;
+    }
+
+    cout << "✅ 图片读取成功: " << inputPath << endl;
+    cout << "📐 图片尺寸: " << originalImage.cols << " x " << originalImage.rows << endl;
+    cout << "🎨 颜色通道: " << originalImage.channels() << endl;
+
+    RGBChannelSeparator separator;
+    
+    if (specificChannel >= 0 && specificChannel <= 2) {
+        // 提取指定通道
+        vector<string> channelNames = {"Blue", "Green", "Red"};
+        Mat singleChannel = separator.extractSingleChannel(originalImage, specificChannel, channelNames[specificChannel]);
+        
+        if (!singleChannel.empty()) {
+            string outputPath = outputPrefix + "_" + channelNames[specificChannel] + "_only.jpg";
+            imwrite(outputPath, singleChannel);
+            cout << "💾 单通道图像已保存: " << outputPath << endl;
+        }
+    } else {
+        // 提取所有通道
+        cout << "\n🔄 开始提取所有RGB通道..." << endl;
+        separator.extractAllChannels(originalImage, outputPrefix);
+        
+        // 创建通道对比图
+        Mat comparison = separator.createChannelComparison(originalImage);
+        string comparisonPath = outputPrefix + "_channel_comparison.jpg";
+        imwrite(comparisonPath, comparison);
+        cout << "💾 通道对比图已保存:"<<comparisonPath<<endl;
+    }
+    return 0;
+}
