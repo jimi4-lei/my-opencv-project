@@ -1,0 +1,65 @@
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgproc.hpp>
+#include <iostream>
+#include <cmath>
+
+using namespace cv;
+using namespace std;
+
+int main() {
+    // 1. 读取图片
+    Mat image = imread("/home/huxinlei/图片/opencv.jpg");  // 替换为我的图片路径
+    if (image.empty()) {
+        cout << "无法读取图片" << endl;
+        return -1;
+    }
+
+    cout << "原图尺寸: " << image.cols << " x " << image.rows << endl;
+
+    // 2. 获取图像中心点
+    Point2f center(image.cols / 2.0f, image.rows / 2.0f);
+
+    // 3. 计算旋转矩阵（向左旋转45度）
+    double angle = 45.0;  // 旋转角度
+    double scale = 1.0;   // 缩放比例
+    
+    // 获取旋转矩阵
+    Mat rotation_matrix = getRotationMatrix2D(center, angle, scale);
+
+    // 4. 计算旋转后的图像边界
+    double radians = angle * CV_PI / 180.0;
+    double sin_val = abs(sin(radians));
+    double cos_val = abs(cos(radians));
+    
+    // 新图像的宽度和高度
+    int new_width = int(image.rows * sin_val + image.cols * cos_val);
+    int new_height = int(image.rows * cos_val + image.cols * sin_val);
+
+    // 5. 调整旋转矩阵的平移部分，使图像居中
+    rotation_matrix.at<double>(0, 2) += (new_width / 2.0) - center.x;
+    rotation_matrix.at<double>(1, 2) += (new_height / 2.0) - center.y;
+
+    // 6. 执行旋转
+    Mat rotated_image;
+    warpAffine(image, rotated_image, rotation_matrix, Size(new_width, new_height), 
+               INTER_LINEAR, BORDER_CONSTANT, Scalar(255, 255, 255));
+
+    cout << "旋转后尺寸: " << rotated_image.cols << " x " << rotated_image.rows << endl;
+
+    // 7. 保存结果
+    imwrite("rotated_45_degrees.jpg", rotated_image);
+
+    // 8. 显示结果（可选）
+    namedWindow("Original Image", WINDOW_NORMAL);
+    namedWindow("Rotated Image", WINDOW_NORMAL);
+    
+    imshow("Original Image", image);
+    imshow("Rotated Image", rotated_image);
+
+    waitKey(0);
+    destroyAllWindows();
+
+    cout << "图片向左旋转45度完成！保存为: rotated_45_degrees.jpg" << endl;
+
+    return 0;
+}
