@@ -1,0 +1,89 @@
+import cv2
+import numpy as np
+import os
+
+def complete_text_detection_workflow():
+    """
+    完整的工作流程，确保每一步都可见
+    """
+    print("=== 文字检测完整工作流程 ===")
+    
+    # 步骤1: 确认工作目录
+    current_dir = os.getcwd()
+    print(f"📁 当前工作目录: {current_dir}")
+    print("当前目录内容:")
+    for item in os.listdir('.'):
+        if os.path.isfile(item):
+            print(f"   📄 {item}")
+        else:
+            print(f"   📂 {item}/")
+    
+    # 步骤2: 查找图片文件
+    image_files = []
+    for file in os.listdir('.'):
+        if file.lower().endswith(('.jpg', '.jpeg', '.png')):
+            image_files.append(file)
+    
+    if not image_files:
+        print("❌ 没有找到图片文件！")
+        print("💡 请将图片文件放在当前目录中")
+        return
+    
+    # 步骤3: 创建结果目录
+    result_dir = "detection_results"
+    os.makedirs(result_dir, exist_ok=True)
+    print(f"✅ 创建结果目录: {result_dir}")
+    
+    # 步骤4: 处理每个图片
+    for image_file in image_files:
+        print(f"\n🎬 处理图片: {image_file}")
+        
+        # 读取图片
+        img = cv2.imread(image_file)
+        if img is None:
+            print(f"❌ 无法读取 {image_file}")
+            continue
+        
+        print(f"✅ 图片尺寸: {img.shape[1]}x{img.shape[0]}")
+        
+        # 完整的处理流程
+        # 1. 灰度图
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        cv2.imwrite(os.path.join(result_dir, f"1_gray_{image_file}"), gray)
+        
+        # 2. 二值化
+        _, binary = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY_INV)
+        cv2.imwrite(os.path.join(result_dir, f"2_binary_{image_file}"), binary)
+        
+        # 3. 膨胀
+        kernel = np.ones((2, 2), np.uint8)
+        dilated = cv2.dilate(binary, kernel, iterations=1)
+        cv2.imwrite(os.path.join(result_dir, f"3_dilated_{image_file}"), dilated)
+        
+        # 4. 查找轮廓
+        contours, _ = cv2.findContours(dilated, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        # 5. 描边
+        result = img.copy()
+        text_count = 0
+        
+        for contour in contours:
+            area = cv2.contourArea(contour)
+            if 20 < area < 5000:
+                cv2.drawContours(result, [contour], -1, (0, 0, 255), 2)
+                text_count += 1
+        
+        # 6. 保存最终结果
+        final_output = os.path.join(result_dir, f"4_final_{image_file}")
+        success = cv2.imwrite(final_output, result)
+        
+        if success:
+            print(f"✅ 成功处理！检测到 {text_count} 个文字区域")
+            print(f"💾 结果保存为: {final_output}")
+            print(f"📁 完整路径: {os.path.abspath(final_output)}")
+        else:
+            print(f"❌ 保存失败: {final_output}")
+
+# 运行完整流程
+if __name__ == "__main__":
+    complete_text_detection_workflow()
